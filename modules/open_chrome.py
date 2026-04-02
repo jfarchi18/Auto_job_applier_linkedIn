@@ -35,12 +35,17 @@ def createChromeSession(isRetry: bool = False):
     if run_in_background:   options.add_argument("--headless")
     if disable_extensions:  options.add_argument("--disable-extensions")
 
-    print_lg("IF YOU HAVE MORE THAN 10 TABS OPENED, PLEASE CLOSE OR BOOKMARK THEM! Or it's highly likely that application will just open browser and not do anything!")
     profile_dir = find_default_profile_directory()
     if isRetry:
         print_lg("Will login with a guest profile, browsing history will not be saved in the browser!")
     elif profile_dir and not safe_mode:
+        # Kill any running Chrome so we can use the real profile
+        import subprocess
+        subprocess.run(["taskkill", "/f", "/im", "chrome.exe"], capture_output=True)
+        import time; time.sleep(2)
         options.add_argument(f"--user-data-dir={profile_dir}")
+        options.add_argument("--profile-directory=Default")
+        print_lg(f"Using your Chrome profile: {profile_dir}")
     else:
         print_lg("Logging in with a guest profile, Web history will not be saved!")
         options.add_argument(f"--user-data-dir={get_default_temp_profile()}")
