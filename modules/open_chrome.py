@@ -14,6 +14,7 @@ Support me: https://github.com/sponsors/GodsScion
 version:    26.01.20.5.08
 '''
 
+import os
 from modules.helpers import get_default_temp_profile, make_directories
 from config.settings import run_in_background, stealth_mode, disable_extensions, safe_mode, file_name, failed_file_name, logs_folder_path, generated_resume_path
 from config.questions import default_resume_path
@@ -39,12 +40,26 @@ def createChromeSession(isRetry: bool = False):
     if isRetry:
         print_lg("Will login with a guest profile, browsing history will not be saved in the browser!")
     elif profile_dir and not safe_mode:
-        # Kill any running Chrome so we can use the real profile
-        import subprocess
+        # Kill ALL Chrome processes so we can use the real profile
+        import subprocess, time
         subprocess.run(["taskkill", "/f", "/im", "chrome.exe"], capture_output=True)
-        import time; time.sleep(2)
+        subprocess.run(["taskkill", "/f", "/im", "chromedriver.exe"], capture_output=True)
+        time.sleep(5)
+        # Make sure nothing is left
+        result = subprocess.run(["tasklist", "/fi", "imagename eq chrome.exe"], capture_output=True, text=True)
+        if "chrome.exe" in result.stdout:
+            print_lg("Chrome still running, force killing again...")
+            subprocess.run(["taskkill", "/f", "/t", "/im", "chrome.exe"], capture_output=True)
+            time.sleep(3)
+        # Remove stale lock files that prevent profile access
+        lock_file = os.path.join(profile_dir, "SingletonLock")
+        if os.path.exists(lock_file):
+            try: os.remove(lock_file)
+            except: pass
         options.add_argument(f"--user-data-dir={profile_dir}")
         options.add_argument("--profile-directory=Default")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check")
         print_lg(f"Using your Chrome profile: {profile_dir}")
     else:
         print_lg("Logging in with a guest profile, Web history will not be saved!")
